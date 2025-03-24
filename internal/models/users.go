@@ -3,10 +3,10 @@ package models
 import (
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
-  "strings"
 
-  "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,26 +23,26 @@ type UserModel struct {
 }
 
 func (m *UserModel) Insert(name, email, password string) error {
-  hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-  if err != nil {
-    return err
-  }
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		return err
+	}
 
-  stmt := `INSERT INTO users (name, email, hashed_password, created)
+	stmt := `INSERT INTO users (name, email, hashed_password, created)
   VALUES(?, ?, ?, UTC_TIMESTAMP())`
 
-  _, err = m.DB.Exec(stmt, name, email, string(hashedPassword))
-  if err != nil {
-    var mySQLError *mysql.MySQLError
-    if errors.As(err, &mySQLError) {
-      if mySQLError.Number == 1062 && strings.Contains(mySQLError.Message, "users_uc_email") {
-        return ErrDuplicateEmail
-      }
-    }
-    return err
-  }
+	_, err = m.DB.Exec(stmt, name, email, string(hashedPassword))
+	if err != nil {
+		var mySQLError *mysql.MySQLError
+		if errors.As(err, &mySQLError) {
+			if mySQLError.Number == 1062 && strings.Contains(mySQLError.Message, "users_uc_email") {
+				return ErrDuplicateEmail
+			}
+		}
+		return err
+	}
 
-  return nil
+	return nil
 }
 
 func (m *UserModel) Authenticate(email, password string) (int, error) {
@@ -73,10 +73,26 @@ func (m *UserModel) Authenticate(email, password string) (int, error) {
 }
 
 func (m *UserModel) Exists(id int) (bool, error) {
-  var exists bool
+	var exists bool
 
-  stmt := "SELECT EXISTS(SELECT true FROM users WHERE id = ?)"
+	stmt := "SELECT EXISTS(SELECT true FROM users WHERE id = ?)"
 
-  err := m.DB.QueryRow(stmt, id).Scan(&exists)
-  return exists, err
+	err := m.DB.QueryRow(stmt, id).Scan(&exists)
+	return exists, err
+}
+
+func (m *UserModel) Get(id int) (User, error) {
+	var user User
+
+	stmt := `SELECT id, name, email, created FROM users WHERE id = ?`
+
+	err := m.DB.QueryRow(stmt, id).Scan(&user.ID, &user.Name, &user.Email, &user.Created)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return User{}, ErrNoRecord
+		} else {
+			return User{}, err
+		}
+	}
+	return user, nil
 }

@@ -2,12 +2,12 @@ package main
 
 import (
 	"html/template"
-  "io/fs"
+	"io/fs"
 	"path/filepath"
 	"time"
 
 	"Cpoing/snippetbox/internal/models"
-  "Cpoing/snippetbox/ui"
+	"Cpoing/snippetbox/ui"
 )
 
 type templateData struct {
@@ -18,6 +18,7 @@ type templateData struct {
 	Flash           string
 	IsAuthenticated bool
 	CSRFToken       string
+	User            models.User
 }
 
 func humanDate(t time.Time) string {
@@ -39,13 +40,13 @@ func newTemplateCache() (map[string]*template.Template, error) {
 	for _, page := range pages {
 		name := filepath.Base(page)
 
-    patterns := []string{
-      "html/base.tmpl",
-      "html/partials/*.tmpl",
-      page,
-    }
+		patterns := []string{
+			"html/base.tmpl",
+			"html/partials/*.tmpl",
+			page,
+		}
 
-    ts, err := template.New(name).Funcs(functions).ParseFS(ui.Files, patterns...)
+		ts, err := template.New(name).Funcs(functions).ParseFS(ui.Files, patterns...)
 		if err != nil {
 			return nil, err
 		}
